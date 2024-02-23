@@ -3,7 +3,7 @@
 This directory contains the scripts to run SPECTRA on the PDBBind dataset. The PDBBind dataset was gathered
 from [Equibind](https://zenodo.org/records/6408497). The different scripts run different steps of SPECTRA.
 
-## Step 1: Defining molecular sequence properties
+## Step 1: Defining spectral properties
 
 `equibind_similarity_util.py`: This script provides the utilities to calculate whether two protein-ligand pairs are similar. Two pairs are similar 
 if their sequences are more than 30% similar or ligands more than 99% similar. 
