@@ -71,11 +71,15 @@ The data used in this study is found in the [Harvard Dataverse page](https://dat
 - [Project Website](https://zitniklab.hms.harvard.edu/projects/SPECTRA/)
 
 ```
-@article{spectra,
-  title={Evaluating generalizability of artificial intelligence models for molecular datasets},
-  author={...},
-  journal={bioRxiv},
-  year={2024}
+@article {spectra,
+	author = {Yasha Ektefaie and Andrew Shen and Daria Bykova and Maximillian Marin and Marinka Zitnik and Maha R Farhat},
+	title = {Evaluating generalizability of artificial intelligence models for molecular datasets},
+	elocation-id = {2024.02.25.581982},
+	year = {2024},
+	doi = {10.1101/2024.02.25.581982},
+	URL = {https://www.biorxiv.org/content/early/2024/02/28/2024.02.25.581982},
+	eprint = {https://www.biorxiv.org/content/early/2024/02/28/2024.02.25.581982.full.pdf},
+	journal = {bioRxiv}
 }
 ```
 
