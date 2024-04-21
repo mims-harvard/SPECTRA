@@ -51,12 +51,6 @@ def run_independent_set(spectral_parameter, input_G, seed = None,
                         raise Exception("Distribution must be provided if binary is set to False, must precompute similarities")
                     if random.random() < spectral_parameter and (1-spectral_parameter)*100 < stats.percentileofscore(distribution, edge_weight):
                         neighbors_to_delete.append(neighbor)
-                    # if random.random() < spectral_parameter:
-                    #     if random.random()*100 < stats.percentileofscore(distribution, edge_weight):
-                    #         neighbors_to_delete.append(neighbor)
-                    # # if edge_weight > np.percentile(distribution, 100-(100*spectral_parameter)):
-                    # #     if random.random() < spectral_parameter:
-                    # #         neighbors_to_delete.append(neighbor)
             else:
                 if spectral_parameter == 1.0:
                     neighbors_to_delete.append(neighbor)

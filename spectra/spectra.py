@@ -141,9 +141,6 @@ class Spectra(ABC):
                                test_size = 0.2):
         
         spectral_property_graph = self.SPG
-        # if nx.density(self.SPG) >= 0.4:
-        #     raise Exception("Density of SPG is greater than 0.4, SPECTRA will not work as your dataset is too similar to itself. Please check your dataset and SPECTRA properties.")
-        
         print(f"Generating SPECTRA split for spectral parameter {spectral_parameter} and dataset {self.dataset.name}")
         result = run_independent_set(spectral_parameter, spectral_property_graph, 
                                      seed = random_seed, 
@@ -258,7 +255,6 @@ class Spectra(ABC):
             if not is_integer(x) or not is_integer(y):
                 return self.non_lookup_spectra_property(x, y)
             else:
-                #[2].values[0]
                 res1 = self.spectra_properties_loaded[(self.spectra_properties_loaded[0] == x) & (self.spectra_properties_loaded[1] == y)]
                 res2 = self.spectra_properties_loaded[(self.spectra_properties_loaded[0] == y) & (self.spectra_properties_loaded[1] == x)]
                 if len(res1) > 0:

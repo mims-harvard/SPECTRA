@@ -15,15 +15,15 @@ The spectral framework for model evaluation (SPECTRA) is a new framework for eva
 
 ## Table of Contents
 
-- [Getting started with SPECTRA](#getting-started)
+- [Getting started with SPECTRA](#getting-started-with-spectra)
 - [How to use SPECTRA](#how-to-use-spectra)
 - [SPECTRA tutorials](#spectra-tutorials)
 - [Background](#background)
 - [Discussion and Development](#discussion-and-development)
 - [Features to be released](#features-to-be-released)
-- [FAQ](#FAQ)
-- [License](#License)
-- [Citing SPECTRA](#citation)
+- [FAQ](#faq)
+- [License](#license)
+- [Citing SPECTRA](#citing-spectra)
 
 
 ## Getting started with spectra
@@ -114,7 +114,7 @@ init_spectra.pre_calculate_spectra_properties([name])
 ```
 ### Step 3: Initialize SPECTRA and precalculate pairwise spectral properties
 
-Generate SPECTRA splits. The ```generate_spectra_splits``` function takes in 4 important parameters: \
+Generate SPECTRA splits. The ```generate_spectra_splits``` function takes in 4 important parameters: 
 1. ```number_repeats```: the number of times to rerun SPECTRA for the same spectral parameter, the number of repeats must equal the number of seeds as each rerun uses a different seed. 
 2. ```random_seed```: the random seeds used by each SPECTRA rerun, [42, 44] indicates two reruns the first of which will use a random seed of 42, the second will use 44. 
 3. ```spectra_parameters```: the spectral parameters to run on, they must range from 0 to 1 and be string formatted to the correct number of significant figures to avoid float formatting errors.
@@ -141,13 +141,13 @@ stats = init_spectra.return_all_split_stats()
 plt.scatter(stats['SPECTRA_parameter'], stats['cross_split_overlap'])
 ```
 
-## SPECTRA Tutorials
+## Spectra tutorials
 
 In the tutorial folder there are jupyter notebooks that outline how to run SPECTRA for the following datasets:
-1. Deep mutational scan datasets from [ProteinGym](https://proteingym.org)
-2. Sequence datasets from [PEER](https://torchprotein.ai/benchmark)
-3. Single-cell perturb datasets used in the [GEARS model](https://www.nature.com/articles/s41587-023-01905-6)
-4. Small-molecule datasets from [Therapeutic Data Commons](https://tdcommons.ai) 
+1. [Deep mutational scan datasets](./tutorials/example_DMS.ipynb) from [ProteinGym](https://proteingym.org)
+2. [Sequence datasets](./tutorials/example_sequences.ipynb) from [PEER](https://torchprotein.ai/benchmark)
+3. [Single-cell perturb datasets](./tutorials/example_single_cell.ipynb) used in the [GEARS model](https://www.nature.com/articles/s41587-023-01905-6)
+4. [Small-molecule dataset](./tutorials/example_mol.ipynb) from [Therapeutic Data Commons](https://tdcommons.ai) 
 
 If there are any other tutorials of interest feel free to raise an issue!
 
@@ -172,6 +172,18 @@ All development discussions take place on GitHub in this repo in the issue track
     For example, if I have a dataset of 100 samples and I run SPECTRA with a spectral parameter of 0.05 and my dataset size decreases to 10, then the majority of samples were similar to each other. On the other hand in another dataset of 100 samples, if I run SECTRA with a spectral parameter of 1.0 and my dataset size is 90, then the samples in the original dataset were not very similar to each other to begin with. 
 
     Now, this is not a bug of SPECTRA: if a dataset has a large amount of sample to sample similarity, then it should not be used to benchmark generalizability in the first place.
+
+2. *I have a foundation model that is pre-trained on a large amount of data. It is not feasible to do pairwise calculations of SPECTRA properties. How can I use SPECTRA?*
+
+    It is still possible to run SPECTRA on the foundation model (FM) and the evaluation dataset. You would use SPECTRA on the evaluation dataset then train and evaluate the foundation model on each SPECTRA split (either through linear probing, fine-tuning, or any other strategy) to calculate the AUSPC. Then you would determine the cross-split overlap between the pre-training dataset and the evaluation dataset. You would repeat this for multiple evaluation datasets, until you could plot FM AUSPC versus cross-split overlap to the evaluation dataset. For more details on what this would look like check out the [publication](https://www.biorxiv.org/content/10.1101/2024.02.25.581982v1), specifically section 5 of the results section. If there is large interest in this FAQ I can release a tutorial on this, just raise an issue! 
+
+3. *I have a foundation model that is pre-trained on a large amount of data and **I do not have access to the pre-training data**. How can I use SPECTRA?*
+
+    This is a bit more tricky but there are [recent publications](https://arxiv.org/abs/2402.03563) that show these foundation models can represent uncertainty in the hidden representations they produce and a model can be trained to predict uncertainty from these representations. This uncertainty could represent the spectral property comparison between the pre-training and evaluation datasets. Though more work needs to be done, porting this work over would allow the application of SPECTRA in these settings. Again if there is large interest in this FAQ I can release a tutorial on this, just raise an issue! 
+
+4. *SPECTRA takes a long time to run is it worth it?*
+
+    The pairwise spectral property comparison is computationally expensive, but only needs to be done once. Generated SPECTRA splits are important resources that should be released to the public so others can utlilize them without spending resources. For more details on the runtime of the method check out the [publication](https://www.biorxiv.org/content/10.1101/2024.02.25.581982v1), specifically section 6 of the results section. The computation can be sped up with cpu cores, which is a feature that will be released.
 
 If there are any other questions please raise them in the issues and I can address them. I'll keep adding to the FAQ as common questions begin to surface.
 
