@@ -10,7 +10,7 @@ setup(
     author='Yasha Ektefaie',
     author_email='yasha_ektefaie@g.harvard.edu',
     license='MIT License',
-    packages=['spectra'],
+    packages=['spectrae'],
     install_requires=['networkx',
                       'numpy', 
                       'torch', 
