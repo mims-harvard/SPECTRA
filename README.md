@@ -1,6 +1,6 @@
 <picture align="center">
-  <source media="(prefers-color-scheme: dark)" srcset="https://www.dropbox.com/scl/fi/p4wa5q1z5avmj8y4f4nbp/spectra.svg?rlkey=ixjhi0vsai865ruj16laihw31&st=4xas69iq&raw=1">
-  <img alt="Pandas Logo" src="https://www.dropbox.com/scl/fi/p4wa5q1z5avmj8y4f4nbp/spectra.svg?rlkey=ixjhi0vsai865ruj16laihw31&st=g89wrf0y&raw=1">
+  <source media="(prefers-color-scheme: dark)" srcset="https://www.dropbox.com/scl/fi/pc41nlewbv7c2lq72koe0/spectra_white.svg?rlkey=mg9rrkwd4vd7pb57l9j84zg2s&st=i4894hug&raw=1">
+  <img alt="Pandas Logo" src="https://www.dropbox.com/scl/fi/2sj1d3eyptogr16y724yu/spectra_black.svg?rlkey=nolii6stkbik4pn6j5fqchfg6&st=vilpgbcs&raw=1">
 </picture>
 
 -----------------
