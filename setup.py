@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='spectrae',
-    version='0.1.1',    
+    version='1.0.1',    
     description='SPECTRA: The spectral framework for model evaluation',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -14,7 +14,7 @@ setup(
     install_requires=['networkx',
                       'numpy', 
                       'torch', 
-                      'sklearn',
+                      'scikit-learn',
                       'pandas',
                       'tqdm',
                       'cell-gears',
