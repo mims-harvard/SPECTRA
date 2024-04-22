@@ -32,7 +32,7 @@ To get started use the [Python
 Package Index (PyPI)](https://pypi.org/project/spectra).
 
 ```sh
-pip install spectra
+pip install spectras
 ```
 ## How to use spectra
 
@@ -43,7 +43,7 @@ To run spectra you must first define important two abstract classes, Spectra and
 SpectraDataset wraps around your input data and defines functions to load in data and retrieve samples by an index.
 
 ```python 
-from spectra import SpectraDataset 
+from spectras import SpectraDataset 
 
 class [Name]_Dataset(SpectraDataset):
     
@@ -80,7 +80,7 @@ Spectra implements the user definition of the spectra property and cross split o
 
 
 ```python 
-from spectra import Spectra
+from spectras import Spectra
 
 class [Name]_spectra(spectra):
     

@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='spectra',
+    name='spectras',
     version='0.1.0',    
     description='SPECTRA: The spectral framework for model evaluation',
     url='https://github.com/mims-harvard/SPECTRA/',
