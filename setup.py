@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='spectrae',
-    version='0.1.0',    
+    version='0.1.1',    
     description='SPECTRA: The spectral framework for model evaluation',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',

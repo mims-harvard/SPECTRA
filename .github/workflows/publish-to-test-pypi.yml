@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/spectras
+      url: https://pypi.org/p/spectrae
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
@@ -100,7 +100,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/spectras
+      url: https://test.pypi.org/p/spectrae
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
