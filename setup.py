@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='spectrae',
-    version='1.0.1',    
+    version='1.0.2',    
     description='SPECTRA: The spectral framework for model evaluation',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -16,10 +16,7 @@ setup(
                       'torch', 
                       'scikit-learn',
                       'pandas',
-                      'tqdm',
-                      'cell-gears',
-                      'torch_geometric',
-                      'PyTDC'                   
+                      'tqdm',            
                       ],
 
     classifiers=[
