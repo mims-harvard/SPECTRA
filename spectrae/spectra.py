@@ -178,25 +178,25 @@ class Spectra(ABC):
             if not os.path.exists(f"{name}_spectral_property_graphs"):
                 os.makedirs(f"{name}_spectral_property_graphs")
         else:
-            if not os.path.exists(f"{data_path}/{name}_SPECTRA_splits"):
-                os.makedirs(f"{data_path}/{name}_SPECTRA_splits")
-            if not os.path.exists(f"{data_path}/{name}_spectral_property_graphs"):
-                os.makedirs(f"{data_path}/{name}_spectral_property_graphs")
+            if not os.path.exists(f"{data_path}{name}_SPECTRA_splits"):
+                os.makedirs(f"{data_path}{name}_SPECTRA_splits")
+            if not os.path.exists(f"{data_path}{name}_spectral_property_graphs"):
+                os.makedirs(f"{data_path}{name}_spectral_property_graphs")
 
         splits = []
         for spectral_parameter in spectral_parameters:
             for i in range(number_repeats):
-                if os.path.exists(f"{data_path}/{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}") and not force_reconstruct:
+                if os.path.exists(f"{data_path}{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}") and not force_reconstruct:
                     print(f"Folder SP_{spectral_parameter}_{i} already exists. Skipping")
-                elif force_reconstruct or not os.path.exists(f"{data_path}/{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}"):
+                elif force_reconstruct or not os.path.exists(f"{data_path}{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}"):
                     train, test, stats = self.generate_spectra_split(float(spectral_parameter), random_seed[i], test_size)
                     if train is not None:
-                        if not os.path.exists(f"{data_path}/{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}"):
-                            os.makedirs(f"{data_path}/{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}")
+                        if not os.path.exists(f"{data_path}{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}"):
+                            os.makedirs(f"{data_path}{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}")
                 
-                        pickle.dump(train, open(f"{data_path}/{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}/train.pkl", "wb"))
-                        pickle.dump(test, open(f"{data_path}/{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}/test.pkl", "wb"))
-                        pickle.dump(stats, open(f"{data_path}/{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}/stats.pkl", "wb"))
+                        pickle.dump(train, open(f"{data_path}{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}/train.pkl", "wb"))
+                        pickle.dump(test, open(f"{data_path}{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}/test.pkl", "wb"))
+                        pickle.dump(stats, open(f"{data_path}{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}/stats.pkl", "wb"))
                     else:
                         print(f"Split for SP_{spectral_parameter}_{i} could not be generated since independent set only has one sample")
                 
