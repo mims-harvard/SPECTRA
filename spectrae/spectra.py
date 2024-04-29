@@ -38,12 +38,12 @@ class Spectra(ABC):
         """
         pass        
     
-    def construct_spectra_graph(self, force_reconstruct = False):
+    def construct_spectra_graph(self, save_path, force_reconstruct = False):
         if self.SPG is not None:
             return self.SPG
-        elif os.path.exists(f"{self.dataset.name}_spectral_property_graphs/{self.dataset.name}_SPECTRA_property_graph.gexf") and not force_reconstruct:
+        elif os.path.exists(f"{save_path}_spectral_property_graphs/{self.dataset.name}_SPECTRA_property_graph.gexf") and not force_reconstruct:
             print("Loading spectral property graph")
-            self.SPG = nx.read_gexf(f"{self.dataset.name}_spectral_property_graphs/{self.dataset.name}_SPECTRA_property_graph.gexf")
+            self.SPG = nx.read_gexf(f"{save_path}_spectral_property_graphs/{self.dataset.name}_SPECTRA_property_graph.gexf")
             self.return_spectra_graph_stats()
             return self.SPG
         else:
@@ -85,10 +85,10 @@ class Spectra(ABC):
                     if all_fully_connected:
                         raise Exception("All SPG sub components are fully connected, cannot run SPECTRA, all samples are similar to each other")
                 
-            if not os.path.exists(f"{self.dataset.name}_spectral_property_graphs"):
-                os.makedirs(f"{self.dataset.name}_spectral_property_graphs")
+            if not os.path.exists(f"{save_path}_spectral_property_graphs"):
+                os.makedirs(f"{save_path}_spectral_property_graphs")
             
-            nx.write_gexf( self.SPG, f"{self.dataset.name}_spectral_property_graphs/{self.dataset.name}_SPECTRA_property_graph.gexf")
+            nx.write_gexf( self.SPG, f"{save_path}_spectral_property_graphs/{self.dataset.name}_SPECTRA_property_graph.gexf")
 
             return self.SPG
 
