@@ -31,11 +31,19 @@ The spectral framework for model evaluation (SPECTRA) is a new framework for eva
 To get started use the [Python
 Package Index (PyPI)](https://pypi.org/project/spectrae).
 
-Please note there is another package called spectra which is not related to this tool. Spectrae (which stands for spectral evaluation) implements the spectral framework for model evaluation.
 
 ```sh
 pip install spectrae
 ```
+
+Or alternatively run this command:
+
+```sh
+ pip install git+https://github.com/mims-harvard/SPECTRA
+```
+
+Please note there is another package called spectra which is not related to this tool. Spectrae (which stands for spectral evaluation) implements the spectral framework for model evaluation.
+
 ## How to use spectra
 
 ### Step 1: Define the spectral property, cross-split overlap, and the spectra dataset wrapper
