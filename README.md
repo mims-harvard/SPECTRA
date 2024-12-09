@@ -206,15 +206,21 @@ SPECTRA is under the MIT license found in the LICENSE file in this GitHub reposi
 Please cite this paper when referring to SPECTRA.
 
 ```
-@article {spectra,
-	author = {Yasha Ektefaie and Andrew Shen and Daria Bykova and Maximillian Marin and Marinka Zitnik and Maha R Farhat},
-	title = {Evaluating generalizability of artificial intelligence models for molecular datasets},
-	elocation-id = {2024.02.25.581982},
-	year = {2024},
-	doi = {10.1101/2024.02.25.581982},
-	URL = {https://www.biorxiv.org/content/early/2024/02/28/2024.02.25.581982},
-	eprint = {https://www.biorxiv.org/content/early/2024/02/28/2024.02.25.581982.full.pdf},
-	journal = {bioRxiv}
+@Article{Ektefaie2024,
+author={Ektefaie, Yasha
+and Shen, Andrew
+and Bykova, Daria
+and Marin, Maximillian G.
+and Zitnik, Marinka
+and Farhat, Maha},
+title={Evaluating generalizability of artificial intelligence models for molecular datasets},
+journal={Nature Machine Intelligence},
+year={2024},
+month={Dec},
+day={06},
+issn={2522-5839},
+doi={10.1038/s42256-024-00931-6},
+url={https://doi.org/10.1038/s42256-024-00931-6}
 }
 ```
 
