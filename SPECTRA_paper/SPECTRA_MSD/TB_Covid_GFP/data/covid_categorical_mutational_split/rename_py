@@ -1,0 +1,12 @@
+import os
+import subprocess
+
+#lambda_0.7000000000000001.txt
+
+for filename in os.listdir():
+	if 'lambda' in filename:
+		data = filename.split('.')
+		if len(data) == 3:
+			command = f'mv {filename} {data[0]+"_"+data[1]+"."+data[2]}'
+			subprocess.run(command, shell=True)
+			print(command)
