@@ -3,22 +3,25 @@ from .independent_set_algo import run_independent_set
 from sklearn.model_selection import train_test_split
 import os 
 import pickle
-from .utils import is_clique, connected_components, is_integer
+from .utils import Spectral_Property_Graph
+from .dataset import SpectraDataset
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
 from abc import ABC, abstractmethod
+import pickle
+import torch
+from typing import List, Tuple, Optional, Dict
 
 class Spectra(ABC):
 
-    def __init__(self, dataset, 
-                 binary = True):
+    def __init__(self, dataset: SpectraDataset, 
+                 spg: Spectral_Property_Graph):
         #SPECTRA properties should be a function that given two samples in your dataset, returns whether they are similar or not
         #Cross split overlap should be a function that given two lists of samples, returns the overlap between the two lists
         self.dataset = dataset
-        self.SPG = None
-        self.spectra_properties_loaded = None
-        self.binary = binary
+        self.SPG = spg
+        self.binary = self.SPG.binary
     
     @abstractmethod
     def spectra_properties(self, sample_one, sample_two):
@@ -29,92 +32,36 @@ class Spectra(ABC):
         """
         pass
 
-    @abstractmethod
-    def cross_split_overlap(self, train, test):
-        """
-        Define the cross split overlap between two lists of samples.
-        Ideally should be a number between 0 and 1 that defines the overlap between the two lists of samples 
-
-        """
-        pass        
-    
-    def construct_spectra_graph(self, force_reconstruct = False):
-        if self.SPG is not None:
-            return self.SPG
-        elif os.path.exists(f"{self.dataset.name}_spectral_property_graphs/{self.dataset.name}_SPECTRA_property_graph.gexf") and not force_reconstruct:
-            print("Loading spectral property graph")
-            self.SPG = nx.read_gexf(f"{self.dataset.name}_spectral_property_graphs/{self.dataset.name}_SPECTRA_property_graph.gexf")
-            self.return_spectra_graph_stats()
-            return self.SPG
-        else:
-            self.SPG = nx.Graph()
-            if self.spectra_properties_loaded is not None:
-                for row in tqdm(self.spectra_properties_loaded.itertuples(), 
-                                total = len(self.spectra_properties_loaded)):
-                    if row[3]:
-                        self.SPG.add_edge(row[1], row[2], weight = row[3])
+    def cross_split_overlap(self, 
+                            split: List[int],
+                            split_two: Optional[List[int]] = None) -> Tuple[float, float, float]:
+        
+        def calculate_overlap(index_to_gather):
+            if self.SPG.binary:
+                num_similar = sum(1 for i, j in index_to_gather if self.SPG.get_weight(i, j) > 0)
+                return num_similar / len(split), num_similar, len(split)
             else:
-                for i in tqdm(range(len(self.dataset))):
-                    for j in range(i+1, len(self.dataset)):
-                        if self.spectra_properties_loaded is not None:
-                            weight = self.spectra_properties_loaded[(self.spectra_properties_loaded[0] == i) & (self.spectra_properties_loaded[1] == j)][2].values[0]
-                        else:    
-                            weight = self.spectra_properties(self.dataset[i], self.dataset[j])
-                        if weight:
-                            self.SPG.add_edge(i, j, weight = weight)
-            
-            self.return_spectra_graph_stats()
-
-            if self.binary:
-                #Check to make sure SPG is not fully connected
-                if is_clique(self.SPG):
-                    print("SPG is fully connected")
-                    raise Exception("The SPG is fully connected, cannot run SPECTRA, all samples are similar to each other")
-                else:
-                    print("SPG is not fully connected")
-                    components = list(connected_components(self.SPG))
-                    all_fully_connected = True
-                    for i, component in enumerate(components):
-                        subgraph = self.SPG.subgraph(component)
-                        if is_clique(subgraph):
-                            print(f"Component {i} is fully connected, all samples are similar to each other")
-                            #raise Exception("The SPG is fully connected, cannot run SPECTRA")
-                        else:
-                            all_fully_connected = False
-                            print(f"Component {i} is not fully connected")
-                    if all_fully_connected:
-                        raise Exception("All SPG sub components are fully connected, cannot run SPECTRA, all samples are similar to each other")
-                
-            if not os.path.exists(f"{self.dataset.name}_spectral_property_graphs"):
-                os.makedirs(f"{self.dataset.name}_spectral_property_graphs")
-            
-            nx.write_gexf( self.SPG, f"{self.dataset.name}_spectral_property_graphs/{self.dataset.name}_SPECTRA_property_graph.gexf")
-
-            return self.SPG
+                if len(index_to_gather) > 100000000:
+                    values = self.SPG.get_weights(index_to_gather)
+                    return torch.mean(values).item(), torch.std(values).item(), torch.max(values).item(), torch.min(values).item()
+                index_to_gather = torch.tensor(index_to_gather).cuda()
+                values = self.SPG.get_weights(index_to_gather)
+                return torch.mean(values).item(), torch.std(values).item(), torch.max(values).item(), torch.min(values).item()
+        
+        if split_two is None:
+            index_to_gather = [(split[i], split[j]) for i in range(len(split)) for j in range(i + 1, len(split))]
+        else:
+            index_to_gather = [(split[i], split_two[j]) for i in range(len(split)) for j in range(len(split_two))]
+        
+        return calculate_overlap(index_to_gather)
 
     def return_spectra_graph_stats(self):
-        if self.SPG is None:
-            self.construct_spectra_graph()
+        num_nodes, num_edges, density = self.SPG.stats()
         print("Stats for SPECTRA property graph (SPG)")
-        print(f"Number of nodes: {self.SPG.number_of_nodes()}")
-        print(f"Number of edges: {self.SPG.number_of_edges()}")
-        num_connected_components = nx.number_connected_components(self.SPG)
-        print(f"Number of connected components: {num_connected_components}\n\n")
-        if num_connected_components > 1:
-            print("Connected component stats")
-            components = list(connected_components(self.SPG))
-            densities = []
-            for i, component in enumerate(components):
-                subgraph = self.SPG.subgraph(component)
-                print(f"Component {i} has {subgraph.number_of_nodes()} nodes and {subgraph.number_of_edges()} edges")
-                print(f"Density of component {i}: {nx.density(subgraph)}")
-                densities.append(nx.density(subgraph))
-                if is_clique(subgraph):
-                    print(f"Component {i} is fully connected, all samples are similar to each other")
-                else:
-                    print(f"Component {i} is not fully connected")
-
-            print(f"Average density {np.mean(densities)}")
+        print(f"Number of nodes: {num_nodes}")
+        print(f"Number of edges: {num_edges}")
+        print(f"Density of SPG: {density}")
+        return num_nodes, num_edges, density
     
     def spectra_train_test_split(self, nodes, test_size, random_state):
         train = []
@@ -133,76 +80,123 @@ class Spectra(ABC):
         return train, test
 
     def get_samples(self, nodes):
-        return [self.dataset[int(i)] for i in nodes]
+        return [self.dataset[i] for i in nodes]
+    
+    def get_sample_indices(self, samples):
+        return [self.dataset.index(i) for i in samples]
 
     def generate_spectra_split(self, 
-                               spectral_parameter, 
-                               random_seed, 
-                               test_size = 0.2):
+                               spectral_parameter: float, 
+                               random_seed: int = 42, 
+                               test_size: float = 0.2, 
+                               degree_choosing: bool = False, 
+                               minimum: int = None):
         
-        spectral_property_graph = self.SPG
         print(f"Generating SPECTRA split for spectral parameter {spectral_parameter} and dataset {self.dataset.name}")
-        result = run_independent_set(spectral_parameter, spectral_property_graph, 
-                                     seed = random_seed, 
-                                     distribution = self.spectra_properties_loaded[2], 
-                                     binary = self.binary)
+        result = run_independent_set(spectral_parameter, self.SPG,
+                                seed = random_seed,
+                                binary = self.binary, 
+                                minimum = minimum,
+                                degree_choosing = degree_choosing)
+
         if len(result) <= 5:
             return None, None, None
         print(f"Number of samples in independent set: {len(result)}")
         train, test = self.spectra_train_test_split(result, test_size=test_size, random_state=random_seed)
-        print(f"Train size: {len(train)}\tTest size: {len(test)}")
-        cross_split_overlap = self.cross_split_overlap(self.get_samples(train), self.get_samples(test))
-        print(f"Cross split overlap: {cross_split_overlap}\n\n\n")
-        stats = {'SPECTRA_parameter': spectral_parameter, 'train_size': len(train), 'test_size': len(test), 'cross_split_overlap': cross_split_overlap}
+        stats = self.get_stats(train, test, spectral_parameter)
         return train, test, stats
     
+    def get_stats(self, train, test, spectral_parameter):
+        train_size = len(train)
+        test_size = len(test)
+        if not self.binary:
+            cross_split_overlap, std_css, max_css, min_css = self.cross_split_overlap(self.get_sample_indices(train), self.get_sample_indices(test))
+            stats = {'SPECTRA_parameter': spectral_parameter, 
+                    'train_size': train_size, 
+                    'test_size': test_size, 
+                    'cross_split_overlap': cross_split_overlap,
+                    'std_css': std_css,
+                    'max_css': max_css,
+                    'min_css': min_css}
+        else:
+            cross_split_overlap, num_similar, num_total = self.cross_split_overlap(self.get_sample_indices(train))
+            stats = {'SPECTRA_parameter': spectral_parameter, 
+                    'train_size': train_size, 
+                    'test_size': test_size, 
+                    'cross_split_overlap': cross_split_overlap,
+                    'num_similar': num_similar,
+                    'num_total': num_total}
+        return stats
+    
     def generate_spectra_splits(self, 
-                                spectral_parameters, 
-                                number_repeats, 
-                                random_seed, 
-                                test_size = 0.2, 
-                                force_reconstruct = False):
+                                spectral_parameters: List[float], 
+                                number_repeats: int, 
+                                random_seed: List[float], 
+                                test_size: float = 0.2,
+                                degree_choosing: bool = False,
+                                minimum: int = None,
+                                force_reconstruct: bool = False,
+                                path_to_save: str = None):
         
         #Random seed is a list of random seeds for each number
         name = self.dataset.name
-        self.construct_spectra_graph(force_reconstruct = force_reconstruct)
         if self.binary:
-            if nx.density(self.SPG) >= 0.4:
+            if self.SPG.get_density() >= 0.4:
                 raise Exception("Density of SPG is greater than 0.4, SPECTRA will not work as your dataset is too similar to itself. Please check your dataset and SPECTRA properties.")
 
-        if not os.path.exists(f"{name}_SPECTRA_splits"):
-            os.makedirs(f"{name}_SPECTRA_splits")
-        if not os.path.exists(f"{name}_spectral_property_graphs"):
-            os.makedirs(f"{name}_spectral_property_graphs")
+        if path_to_save is None:
+            path_to_save = f"{name}_SPECTRA_splits"
+        
+        if not os.path.exists(path_to_save):
+            os.makedirs(path_to_save)
 
         splits = []
         for spectral_parameter in spectral_parameters:
             for i in range(number_repeats):
-                if os.path.exists(f"{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}") and not force_reconstruct:
+                if os.path.exists(f"{path_to_save}/SP_{spectral_parameter}_{i}") and not force_reconstruct:
                     print(f"Folder SP_{spectral_parameter}_{i} already exists. Skipping")
-                elif force_reconstruct or not os.path.exists(f"{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}"):
-                    train, test, stats = self.generate_spectra_split(float(spectral_parameter), random_seed[i], test_size)
+                elif force_reconstruct or not os.path.exists(f"{path_to_save}/SP_{spectral_parameter}_{i}"):
+                    train, test, stats = self.generate_spectra_split(float(spectral_parameter), random_seed[i], test_size, degree_choosing, minimum)
                     if train is not None:
-                        if not os.path.exists(f"{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}"):
-                            os.makedirs(f"{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}")
+                        if not os.path.exists(f"{path_to_save}/SP_{spectral_parameter}_{i}"):
+                            os.makedirs(f"{path_to_save}_SPECTRA_splits/SP_{spectral_parameter}_{i}")
                 
-                        pickle.dump(train, open(f"{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}/train.pkl", "wb"))
-                        pickle.dump(test, open(f"{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}/test.pkl", "wb"))
-                        pickle.dump(stats, open(f"{name}_SPECTRA_splits/SP_{spectral_parameter}_{i}/stats.pkl", "wb"))
+                        pickle.dump(train, open(f"{path_to_save}_SPECTRA_splits/SP_{spectral_parameter}_{i}/train.pkl", "wb"))
+                        pickle.dump(test, open(f"{path_to_save}_SPECTRA_splits/SP_{spectral_parameter}_{i}/test.pkl", "wb"))
+                        pickle.dump(stats, open(f"{path_to_save}_SPECTRA_splits/SP_{spectral_parameter}_{i}/stats.pkl", "wb"))
                     else:
                         print(f"Split for SP_{spectral_parameter}_{i} could not be generated since independent set only has one sample")
                 
         return splits
     
-    def return_split_stats(self, spectral_parameter, number):
-        split_folder = f"./{self.dataset.name}_SPECTRA_splits/SP_{spectral_parameter}_{number}"
+    def return_split_stats(self, spectral_parameter: float, 
+                           number: int, 
+                           path_to_save: str = None):
+        
+        if path_to_save is None:
+            path_to_save = f"{self.dataset.name}_SPECTRA_splits"
+
+        split_folder = f"./{path_to_save}/SP_{spectral_parameter}_{number}"
         if not os.path.exists(split_folder):
             raise Exception(f"Split folder {split_folder} does not exist")
         else:
+            if not os.path.exists(f"{split_folder}/stats.pkl"):
+                train = pickle.load(open(f"{split_folder}/train.pkl", "rb"))
+                test = pickle.load(open(f"{split_folder}/test.pkl", "rb"))
+                stats = self.get_stats(train, test, spectral_parameter)
+                pickle.dump(stats, open(f"{split_folder}/stats.pkl", "wb"))
+                return stats
+            
             return pickle.load(open(f"{split_folder}/stats.pkl", "rb"))
     
-    def return_split_samples(self, spectral_parameter, number):
-        split_folder = f"./{self.dataset.name}_SPECTRA_splits/SP_{spectral_parameter}_{number}"
+    def return_split_samples(self, spectral_parameter: float, 
+                             number: int,
+                             path_to_save: str = None):
+        
+        if path_to_save is None:
+            path_to_save = f"{self.dataset.name}_SPECTRA_splits"
+
+        split_folder = f"./{path_to_save}/SP_{spectral_parameter}_{number}"
         if not os.path.exists(split_folder):
             raise Exception(f"Split folder {split_folder} does not exist")
         else:
@@ -210,14 +204,25 @@ class Spectra(ABC):
             test = pickle.load(open(f"{split_folder}/test.pkl", "rb"))
             return [self.dataset[int(i)] for i in train], [self.dataset[int(i)] for i in test]
     
-    def return_all_split_stats(self):
+    def return_all_split_stats(self,
+                               path_to_save: str = None,
+                               show_progress: bool = False) -> Dict:
+        
+        if path_to_save is None:
+            path_to_save = f"{self.dataset.name}_SPECTRA_splits"
+
         SP = []
         numbers = []
         train_size = []
         test_size = []
         cross_split_overlap = []
 
-        for folder in os.listdir(f"{self.dataset.name}_SPECTRA_splits"):
+        if not show_progress:
+            to_iterate = os.listdir(path_to_save)
+        else:
+            to_iterate = tqdm(os.listdir(path_to_save))
+
+        for folder in to_iterate:
             spectral_parameter = folder.split('_')[1]
             number = folder.split('_')[2]
             res = self.return_split_stats(spectral_parameter, number)
@@ -229,45 +234,60 @@ class Spectra(ABC):
         
         stats = {'SPECTRA_parameter': SP, 'number': number, 'train_size': train_size, 'test_size': test_size, 'cross_split_overlap': cross_split_overlap}
         return stats
-    
-    def pre_calculate_spectra_properties(self, filename, force_recalculate = False):
-        if os.path.exists(f"{filename}_precalculated_spectra_properties") and not force_recalculate:
-            print(f"File {filename}_precalculated_spectra_properties already exists, set force_recalculate to True to recalculate")
-        else:
-            similarity_file = open(f"{filename}_precalculated_spectra_properties", 'w')
 
-            for i in tqdm(range(len(self.dataset))):
-                for j in range(i+1, len(self.dataset)):
-                    similarity_file.write(f"{i}\t{j}\t{self.spectra_properties(self.dataset[i], self.dataset[j])}\n")
+class Spectra_Property_Graph_Constructor():
+    def __init__(self, spectra: Spectra, 
+                 dataset: SpectraDataset,
+                 num_chunks: int = 0):
+        self.spectra = spectra
+        self.dataset = dataset
+        if num_chunks != 0:
+            self.data_chunk = np.array_split(list(range(len(self.dataset))), num_chunks)
+        else:
+            self.data_chunk = [list(range(len(self.dataset)))]
+    
+    def create_adjacency_matrix(self, chunk_num: int):
+        to_store = []
+
+        for i in tqdm(self.data_chunk[chunk_num]):
+            for j in range(i, len(self.dataset)):
+                if i != j:
+                    if self.spectra.spectra_properties(self.dataset[i], self.dataset[j]):
+                        to_store.append(1)
+                    else:
+                        to_store.append(0)
+        
+        with open(f'adjacency_matrices/aj_{chunk_num}.npy', 'wb') as f:
+            pickle.dump(to_store, f)
+        
+    def combine_adjacency_matrices(self):
+        num_adjacency = len(os.listdir('adjacency_matrices'))
+        if self.num_chunks == 0:
+            if num_adjacency != 1:
+                raise Exception("Need to generate adjacency matrices first! See documentation")
+        else:
+            if num_adjacency != self.num_chunks:
+                raise Exception("Need to generate adjacency matrices first! See documentation")
+        
+        n = len(self.dataset)
+        new = np.zeros((n*(n-1))/2)
+        previous_start = 0
+
+        for i in tqdm(range(self.num_chunks)):
+            to_assign = np.load(f'aj_{i}.npy', allow_pickle=True)
+            new[previous_start:previous_start+len(to_assign)] = to_assign
+            previous_start += len(to_assign)
+            new = new.astype(np.int8)
+
+        if self.spectra.binary:
+            torch.save(torch.tensor(new).to(torch.int8), 'flattened_adjacency_matrix.pt')
+        else:
+            torch.save(torch.tensor(new).half(), 'flattened_adjacency_matrix.pt')
             
-            similarity_file.close()
-        self.load_spectra_precalculated_spectra_properties(filename)
+
     
-    def load_spectra_precalculated_spectra_properties(self, filename):
-        if not os.path.exists(f"{filename}_precalculated_spectra_properties"):
-            raise Exception(f"File {filename}_precalculated_spectra_properties does not exist")
-        else:
-            self.spectra_properties_loaded = pd.read_csv(f"{filename}_precalculated_spectra_properties", sep = '\t', header = None)
 
-        self.non_lookup_spectra_property = self.spectra_properties
-
-        def lookup_spectra_property(x, y):
-            if not is_integer(x) or not is_integer(y):
-                return self.non_lookup_spectra_property(x, y)
-            else:
-                res1 = self.spectra_properties_loaded[(self.spectra_properties_loaded[0] == x) & (self.spectra_properties_loaded[1] == y)]
-                res2 = self.spectra_properties_loaded[(self.spectra_properties_loaded[0] == y) & (self.spectra_properties_loaded[1] == x)]
-                if len(res1) > 0:
-                    return res1[2].values[0]
-                elif len(res2) > 0:
-                    return res2[2].values[0]
-                else:
-                    raise Exception(f"SPECTRA property between {x} and {y} not found in precalculated file")
-
-        self.spectra_properties = lookup_spectra_property
-
-
-
+    
 
 
     
