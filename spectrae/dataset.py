@@ -9,6 +9,7 @@ class SpectraDataset(ABC):
         self.sample_to_index = self.parse(input_file)
         self.samples = list(self.sample_to_index.keys())
         self.samples.sort()
+        self.index_map = {value: idx for idx, value in enumerate(self.samples)}
     
     @abstractmethod
     def parse(self, input_file: str) -> Dict:
@@ -35,6 +36,6 @@ class SpectraDataset(ABC):
         """
         Given a value, return the index of that value
         """
-        if value not in self.samples:
+        if value not in self.index_map:
             raise ValueError(f"{value} not in the dataset")
-        return self.samples.index(value)
+        return self.index_map[value]

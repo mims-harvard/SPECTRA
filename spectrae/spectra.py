@@ -35,24 +35,62 @@ class Spectra(ABC):
 
     def cross_split_overlap(self, 
                             split: List[int],
-                            split_two: Optional[List[int]] = None) -> Tuple[float, float, float]:
+                            split_two: Optional[List[int]] = None,
+                            chunksize: int = 10000000,
+                            show_progress: bool = False) -> Tuple[float, float, float]:
         
         def calculate_overlap(index_to_gather):
             if self.SPG.binary:
-                num_similar = sum(1 for i, j in index_to_gather if self.SPG.get_weight(i, j) > 0)
-                return num_similar / len(split), num_similar, len(split)
+                num_similar = 0
+
+                if show_progress:
+                    index_to_gather = tqdm(index_to_gather, total = len(split))
+                else:
+                    index_to_gather = index_to_gather
+
+                for compare_list in index_to_gather:
+                    if self.SPG.get_weights(compare_list).sum() > 0:
+                        num_similar += 1
+
+                return num_similar/(len(split)), num_similar, len(split)
             else:
-                if len(index_to_gather) > 100000000:
-                    values = self.SPG.get_weights(index_to_gather)
-                    return torch.mean(values).item(), torch.std(values).item(), torch.max(values).item(), torch.min(values).item()
-                index_to_gather = torch.tensor(index_to_gather).cuda()
-                values = self.SPG.get_weights(index_to_gather)
-                return torch.mean(values).item(), torch.std(values).item(), torch.max(values).item(), torch.min(values).item()
+                mean_val = 0.0
+                std_val = 0.0
+                max_val = float('-inf')
+                min_val = float('inf')
+                count = 0
+                for i, j in index_to_gather:
+                    weight = self.SPG.get_weight(i, j)
+                    mean_val += weight
+                    std_val += weight ** 2
+                    if weight > max_val:
+                        max_val = weight
+                    if weight < min_val:
+                        min_val = weight
+                    count += 1
+
+                    if count > 100000000:
+                        break
+
+                mean_val /= count
+                std_val = (std_val / count - mean_val ** 2) ** 0.5
+                return mean_val, std_val, max_val, min_val
         
-        if split_two is None:
-            index_to_gather = [(split[i], split[j]) for i in range(len(split)) for j in range(i + 1, len(split))]
-        else:
-            index_to_gather = [(split[i], split_two[j]) for i in range(len(split)) for j in range(len(split_two))]
+        def generate_indices(split, split_two):
+            if split_two is not None:
+                for i in range(len(split)):
+                    to_compare = []
+                    for j in range(len(split_two)):
+                        to_compare.append((split[i], split_two[j]))
+                    yield to_compare
+            else:
+                for i in range(len(split)):
+                    to_compare = []
+                    for j in range(i+1, len(split)):
+                        to_compare.append((split[i], split[j]))
+                    yield to_compare
+        
+        index_to_gather = generate_indices(split, split_two)
         
         return calculate_overlap(index_to_gather)
 
@@ -107,11 +145,11 @@ class Spectra(ABC):
         stats = self.get_stats(train, test, spectral_parameter)
         return train, test, stats
     
-    def get_stats(self, train, test, spectral_parameter):
+    def get_stats(self, train, test, spectral_parameter, chunksize = 10000000, show_progress = False):
         train_size = len(train)
         test_size = len(test)
         if not self.binary:
-            cross_split_overlap, std_css, max_css, min_css = self.cross_split_overlap(self.get_sample_indices(train), self.get_sample_indices(test))
+            cross_split_overlap, std_css, max_css, min_css = self.cross_split_overlap(self.get_sample_indices(train), self.get_sample_indices(test), chunksize, show_progress)
             stats = {'SPECTRA_parameter': spectral_parameter, 
                     'train_size': train_size, 
                     'test_size': test_size, 
@@ -120,7 +158,7 @@ class Spectra(ABC):
                     'max_css': max_css,
                     'min_css': min_css}
         else:
-            cross_split_overlap, num_similar, num_total = self.cross_split_overlap(self.get_sample_indices(train))
+            cross_split_overlap, num_similar, num_total = self.cross_split_overlap(self.get_sample_indices(train), self.get_sample_indices(test), chunksize, show_progress)
             stats = {'SPECTRA_parameter': spectral_parameter, 
                     'train_size': train_size, 
                     'test_size': test_size, 
@@ -172,7 +210,9 @@ class Spectra(ABC):
     
     def return_split_stats(self, spectral_parameter: float, 
                            number: int, 
-                           path_to_save: str = None):
+                           path_to_save: str = None,
+                           chunksize: int = 10000000,
+                           show_progress: bool = False) -> Dict:
         
         if path_to_save is None:
             path_to_save = f"{self.dataset.name}_SPECTRA_splits"
@@ -184,7 +224,7 @@ class Spectra(ABC):
             if not os.path.exists(f"{split_folder}/stats.pkl"):
                 train = pickle.load(open(f"{split_folder}/train.pkl", "rb"))
                 test = pickle.load(open(f"{split_folder}/test.pkl", "rb"))
-                stats = self.get_stats(train, test, spectral_parameter)
+                stats = self.get_stats(train, test, spectral_parameter, chunksize, show_progress)
                 pickle.dump(stats, open(f"{split_folder}/stats.pkl", "wb"))
                 return stats
             
@@ -207,6 +247,7 @@ class Spectra(ABC):
     
     def return_all_split_stats(self,
                                path_to_save: str = None,
+                               chunksize: int = 10000000,
                                show_progress: bool = False) -> Dict:
         
         if path_to_save is None:
@@ -226,7 +267,7 @@ class Spectra(ABC):
         for folder in to_iterate:
             spectral_parameter = folder.split('_')[1]
             number = folder.split('_')[2]
-            res = self.return_split_stats(spectral_parameter, number)
+            res = self.return_split_stats(spectral_parameter, number, chunksize=chunksize, show_progress=True)
             SP.append(float(spectral_parameter))
             numbers.append(int(number))
             train_size.append(int(res['train_size']))
