@@ -21,7 +21,8 @@ class Spectra(ABC):
         #Cross split overlap should be a function that given two lists of samples, returns the overlap between the two lists
         self.dataset = dataset
         self.SPG = spg
-        self.binary = self.SPG.binary
+        if self.SPG is not None:
+            self.binary = self.SPG.binary
     
     @abstractmethod
     def spectra_properties(self, sample_one, sample_two):
@@ -241,8 +242,9 @@ class Spectra_Property_Graph_Constructor():
                  num_chunks: int = 0):
         self.spectra = spectra
         self.dataset = dataset
-        if num_chunks != 0:
-            self.data_chunk = np.array_split(list(range(len(self.dataset))), num_chunks)
+        self.num_chunks = num_chunks
+        if self.num_chunks != 0:
+            self.data_chunk = np.array_split(list(range(len(self.dataset))), self.num_chunks)
         else:
             self.data_chunk = [list(range(len(self.dataset)))]
     
@@ -257,6 +259,9 @@ class Spectra_Property_Graph_Constructor():
                     else:
                         to_store.append(0)
         
+        if not os.path.exists('adjacency_matrices'):
+            os.makedirs('adjacency_matrices')
+        
         with open(f'adjacency_matrices/aj_{chunk_num}.npy', 'wb') as f:
             pickle.dump(to_store, f)
         
@@ -270,11 +275,11 @@ class Spectra_Property_Graph_Constructor():
                 raise Exception("Need to generate adjacency matrices first! See documentation")
         
         n = len(self.dataset)
-        new = np.zeros((n*(n-1))/2)
+        new = np.zeros(int((n*(n-1))/2))
         previous_start = 0
 
         for i in tqdm(range(self.num_chunks)):
-            to_assign = np.load(f'aj_{i}.npy', allow_pickle=True)
+            to_assign = np.load(f'adjacency_matrices/aj_{i}.npy', allow_pickle=True)
             new[previous_start:previous_start+len(to_assign)] = to_assign
             previous_start += len(to_assign)
             new = new.astype(np.int8)
