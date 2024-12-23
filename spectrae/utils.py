@@ -4,6 +4,7 @@ from tqdm import tqdm
 from typing import List, Tuple, Dict, Union, Optional
 import os
 import matplotlib.pyplot as plt
+import pickle
 
 class FlattenedAdjacency:
     def __init__(self, 
@@ -183,17 +184,14 @@ def cross_split_overlap(split, g):
         values = g.get_weights(index_to_gather)
         return torch.mean(values).item(), torch.std(values).item(), torch.max(values).item(), torch.min(values).item()
 
-def output_split_stats(split_directory, g):
-    spectral_parameter = []
-    length = []
-    css = []
+def output_split_stats(stats_file: str, name: str = None):
+    with open(stats_file, 'rb') as f:
+        stats = pickle.load(f)
 
-    for split_file in tqdm(os.listdir(split_directory)):
-        x = np.load(f'{split_directory}/{split_file}')
-        sp = split_file.split('_')[0]
-        spectral_parameter.append(sp)
-        length.append(len(x))
-        css.append(cross_split_overlap(x, g)[0])
+    spectral_parameter = stats['SPECTRA_parameter']
+    train_length = stats['train_size']
+    test_length = stats['test_size']
+    css = stats['cross_split_overlap']
 
     # Convert spectral_parameter to a numeric type if necessary
     spectral_parameter = list(map(float, spectral_parameter))
@@ -202,10 +200,13 @@ def output_split_stats(split_directory, g):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 
     # Dataset size vs Spectral parameter
-    ax1.scatter(spectral_parameter, length, color='blue')
-    ax1.set_title('Dataset Size vs Spectral Parameter')
+    ax1.scatter(spectral_parameter, train_length, color='blue', label='Train')
+    ax1.scatter(spectral_parameter, test_length, color='green', label='Test')
+    ax1.set_title('Train and test set size vs Spectral Parameter')
     ax1.set_xlabel('Spectral Parameter')
     ax1.set_ylabel('Dataset Size')
+    ax1.legend()
+
 
     # Cross split overlap vs Spectral parameter
     ax2.scatter(spectral_parameter, css, color='red')
@@ -215,8 +216,8 @@ def output_split_stats(split_directory, g):
 
     # Adjust layout and save the plot
     plt.tight_layout()
-    plt.savefig('split_stats.png')
+    if name is not None:
+        plt.savefig(f'{name}.png')
+    else:
+        plt.savefig('split_stats.png')
     plt.show()
-        
-
-    return spectral_parameter, length, css
