@@ -3,7 +3,7 @@ from .independent_set_algo import run_independent_set
 from sklearn.model_selection import train_test_split
 import os 
 import pickle
-from .utils import Spectral_Property_Graph
+from .utils import Spectral_Property_Graph, plot_split_stats
 from .dataset import SpectraDataset
 import numpy as np
 from tqdm import tqdm
@@ -152,7 +152,11 @@ class Spectra(ABC):
                     os.makedirs(f"{path_to_save}/SP_{spectral_parameter}_{i}")
             
             pickle.dump(train, open(f"{path_to_save}/SP_{spectral_parameter}_{i}/train.pkl", "wb"))
+            pickle.dump([self.dataset.samples[i] for i in train], open(f"{path_to_save}/SP_{spectral_parameter}_{i}/train_IDs.pkl", "wb"))
+
             pickle.dump(test, open(f"{path_to_save}/SP_{spectral_parameter}_{i}/test.pkl", "wb"))
+            pickle.dump([self.dataset.samples[i] for i in test], open(f"{path_to_save}/SP_{spectral_parameter}_{i}/test_IDs.pkl", "wb"))
+            
             pickle.dump(stats, open(f"{path_to_save}/SP_{spectral_parameter}_{i}/stats.pkl", "wb"))
     
     def get_stats(self, train: List, 
@@ -330,7 +334,24 @@ class Spectra(ABC):
             cross_split_overlap.append(float(res['cross_split_overlap']))
         
         stats = {'SPECTRA_parameter': SP, 'number': number, 'train_size': train_size, 'test_size': test_size, 'cross_split_overlap': cross_split_overlap}
+        pickle.dump(stats, open(f"{path_to_save}/all_stats.pkl", "wb"))
+        plot_split_stats(stats = stats)
         return stats
+    
+    # def find_closest(self, overlap, x, y):
+    #     min_difference = 1000000
+    #     best_overlap = None
+    #     best_param = None
+        
+        
+    #     for i,j in zip(x, y):
+    #         if abs(overlap - j) < min_difference:
+    #             best_param = i
+    #             best_overlap = j
+    #             min_difference = abs(overlap - j)
+        
+    #     print(f"{best_overlap} and {best_param} for {overlap}")
+
 
 class Spectra_Property_Graph_Constructor():
     def __init__(self, spectra: Spectra, 

@@ -87,21 +87,21 @@ class Spectral_Property_Graph:
 
         return total_sum
 
-    def get_density(self, chunk_size = 1000000000, return_sum = False):
+    def get_density(self, chunk_size: int = 1000000000, return_sum: bool = False):
         result = self.chunked_sum(chunk_size)
         if return_sum:
             return result, result/self.num_edges()
         return result/self.num_edges()
 
-    def get_degree(self, node):
+    def get_degree(self, node: int):
         n = self.num_nodes()
 
         indexes = []
         for i in range(n):
-            indexes.append(self.flattened_adjacency.return_index_flat(i, node))
+            indexes.append((i, node))
             #values.append(self.flattened_adjacency[i, node])
         
-        values = self.flattened_adjacency.flattened_adjacency[indexes].type(torch.int64)
+        values = self.flattened_adjacency[indexes].type(torch.int64)
         return torch.sum(values), torch.sum(values)/n
         #return sum(values), sum(values)/n
 
@@ -115,6 +115,7 @@ class Spectral_Property_Graph:
             if not torch.cuda.is_available():
                 self.degree_distribution = torch.load(f"{name}.pt", map_location = "cpu")
             self.degree_distribution = torch.load(f"{name}.pt", map_location = "cuda")
+            self.sorted_minimum_keys = sorted(self.degree_distribution, key=lambda k: self.degree_distribution[k])
             return self.degree_distribution
         
         n = self.num_nodes()
@@ -132,28 +133,28 @@ class Spectral_Property_Graph:
             torch.save(degrees, f"{name}.pt")
 
         self.degree_distribution = degrees
+        self.sorted_minimum_keys = sorted(degrees, key=lambda k: self.degree_distribution[k])
         return self.degree_distribution
     
-    def get_minimum_degree_node(self, to_include: List[int] = []) -> Tuple[int, int]:
+    def get_minimum_degree_node(self, deleted_nodes: List[int] = None) -> Tuple[int, int]:
         if self.degree_distribution is None:
-            self.degree_distribution = self.get_degree_distribution(track = True, save = True)
-        
-        minimum_value = None 
-        minimum_key = None
+                self.degree_distribution = self.get_degree_distribution(track = True, save = True)
 
-        for i in to_include:
-            if minimum_value is None or self.degree_distribution[i] < minimum_value:
-                minimum_value = self.degree_distribution[i]
-                minimum_key = i
-        return minimum_key, minimum_value
-        # filtered_degrees = {k: v for k, v in self.degree_distribution.items() if k not in exclude}
-        # min_key = min(filtered_degrees, key=filtered_degrees.get)
-        #return min_key, filtered_degrees[min_key]
+        current_index = 0
+
+        while current_index < len(self.sorted_minimum_keys):
+            key = self.sorted_minimum_keys[current_index]
+            current_index += 1
+            if deleted_nodes is None or key not in deleted_nodes:
+                deleted_nodes = yield key, self.degree_distribution[key]
+                deleted_nodes = set(deleted_nodes)
+            
+
     
-    def get_weight(self, i, j):
+    def get_weight(self, i: int, j:int):
         return self.flattened_adjacency[i, j]
 
-    def get_weights(self, indices):
+    def get_weights(self, indices: List[Tuple[int, int]]):
         return self.flattened_adjacency[indices]
     
     def get_stats(self):
@@ -184,9 +185,10 @@ def cross_split_overlap(split, g):
         values = g.get_weights(index_to_gather)
         return torch.mean(values).item(), torch.std(values).item(), torch.max(values).item(), torch.min(values).item()
 
-def output_split_stats(stats_file: str, name: str = None):
-    with open(stats_file, 'rb') as f:
-        stats = pickle.load(f)
+def plot_split_stats(stats_file: str = None, name: str = None, stats: Optional[Dict] = None):
+    if stats is None:
+        with open(stats_file, 'rb') as f:
+            stats = pickle.load(f)
 
     spectral_parameter = stats['SPECTRA_parameter']
     train_length = stats['train_size']
