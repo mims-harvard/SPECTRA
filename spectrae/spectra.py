@@ -59,19 +59,18 @@ class Spectra(ABC):
                 max_val = float('-inf')
                 min_val = float('inf')
                 count = 0
-                for i, j in index_to_gather:
-                    weight = self.SPG.get_weight(i, j)
-                    mean_val += weight
-                    std_val += weight ** 2
-                    if weight > max_val:
-                        max_val = weight
-                    if weight < min_val:
-                        min_val = weight
-                    count += 1
-
+                for compare_list in index_to_gather:
+                    weights = self.SPG.get_weights(compare_list)
+                    mean_val += weights.sum() 
+                    std_val += (weights ** 2).sum()
+                    if weights.max() > max_val:
+                        max_val = weights.max()
+                    if weights.min() < min_val:
+                        min_val = weights.min()
+                    count += len(weights)
+                    
                     if count > 100000000:
                         break
-
                 mean_val /= count
                 std_val = (std_val / count - mean_val ** 2) ** 0.5
                 return mean_val, std_val, max_val, min_val
@@ -130,17 +129,21 @@ class Spectra(ABC):
                                test_size: float = 0.2, 
                                degree_choosing: bool = False, 
                                minimum: int = None,
-                               path_to_save: str = None):
+                               path_to_save: str = None,
+                               num_splits: int = None,
+                               debug_mode: bool = False):
         
         print(f"Generating SPECTRA split for spectral parameter {spectral_parameter} and dataset {self.dataset.name}")
         result = run_independent_set(spectral_parameter, self.SPG,
                                 seed = random_seed,
                                 binary = self.binary, 
                                 minimum = minimum,
-                                degree_choosing = degree_choosing)
+                                degree_choosing = degree_choosing,
+                                num_splits = num_splits,
+                                debug_mode = debug_mode)
 
-        if len(result) <= 5:
-            return None, None, None
+        if len(result) <= 10:
+            raise Exception("Independent set has less than 10 samples, cannot generate split")
         print(f"Number of samples in independent set: {len(result)}")
         train, test = self.spectra_train_test_split(result, test_size=test_size, random_state=random_seed)
         stats = self.get_stats(train, test, spectral_parameter)
@@ -275,8 +278,10 @@ class Spectra(ABC):
         
         if path_to_save is None:
             path_to_save = f"{self.dataset.name}_SPECTRA_splits"
+            split_folder = f"./{path_to_save}/SP_{spectral_parameter}_{number}"
+        else:
+            split_folder = f"{path_to_save}/SP_{spectral_parameter}_{number}"
 
-        split_folder = f"./{path_to_save}/SP_{spectral_parameter}_{number}"
         if not os.path.exists(split_folder):
             raise Exception(f"Split folder {split_folder} does not exist")
         else:
@@ -317,6 +322,10 @@ class Spectra(ABC):
         train_size = []
         test_size = []
         cross_split_overlap = []
+        if not self.binary:
+            std_css = []
+            max_css = []
+            min_css = []
 
         if not show_progress:
             to_iterate = os.listdir(path_to_save)
@@ -326,14 +335,22 @@ class Spectra(ABC):
         for folder in to_iterate:
             spectral_parameter = folder.split('_')[1]
             number = folder.split('_')[2]
-            res = self.return_split_stats(spectral_parameter, number, chunksize=chunksize, show_progress=True)
+            res = self.return_split_stats(spectral_parameter, number, chunksize=chunksize, path_to_save=path_to_save, show_progress=show_progress)
             SP.append(float(spectral_parameter))
             numbers.append(int(number))
             train_size.append(int(res['train_size']))
             test_size.append(int(res['test_size']))
             cross_split_overlap.append(float(res['cross_split_overlap']))
+            if not self.binary:
+                std_css.append(float(res['std_css']))
+                max_css.append(float(res['max_css']))
+                min_css.append(float(res['min_css']))
         
         stats = {'SPECTRA_parameter': SP, 'number': number, 'train_size': train_size, 'test_size': test_size, 'cross_split_overlap': cross_split_overlap}
+        if not self.binary:
+            stats['std_css'] = std_css
+            stats['max_css'] = max_css
+            stats['min_css'] = min_css
         pickle.dump(stats, open(f"{path_to_save}/all_stats.pkl", "wb"))
         plot_split_stats(stats = stats)
         return stats
@@ -356,7 +373,8 @@ class Spectra(ABC):
 class Spectra_Property_Graph_Constructor():
     def __init__(self, spectra: Spectra, 
                  dataset: SpectraDataset,
-                 num_chunks: int = 0):
+                 num_chunks: int = 0,
+                 binary: bool = False):
         self.spectra = spectra
         self.dataset = dataset
         self.num_chunks = num_chunks
@@ -364,6 +382,7 @@ class Spectra_Property_Graph_Constructor():
             self.data_chunk = np.array_split(list(range(len(self.dataset))), self.num_chunks)
         else:
             self.data_chunk = [list(range(len(self.dataset)))]
+        self.binary = binary
     
     def create_adjacency_matrix(self, chunk_num: int):
         to_store = []
@@ -371,10 +390,13 @@ class Spectra_Property_Graph_Constructor():
         for i in tqdm(self.data_chunk[chunk_num]):
             for j in range(i, len(self.dataset)):
                 if i != j:
-                    if self.spectra.spectra_properties(self.dataset[i], self.dataset[j]):
-                        to_store.append(1)
+                    if self.binary:
+                        if self.spectra.spectra_properties(self.dataset[i], self.dataset[j]):
+                            to_store.append(1)
+                        else:
+                            to_store.append(0)
                     else:
-                        to_store.append(0)
+                        to_store.append(self.spectra.spectra_properties(self.dataset[i], self.dataset[j]))
         
         if not os.path.exists('adjacency_matrices'):
             os.makedirs('adjacency_matrices')
@@ -399,9 +421,15 @@ class Spectra_Property_Graph_Constructor():
             to_assign = np.load(f'adjacency_matrices/aj_{i}.npy', allow_pickle=True)
             new[previous_start:previous_start+len(to_assign)] = to_assign
             previous_start += len(to_assign)
-            new = new.astype(np.int8)
+            if self.binary:
+                new = new.astype(np.int8)
+            else:
+                new = new.astype(np.float16)
+        
+        if self.num_chunks == 0:
+            new = np.load(f'adjacency_matrices/aj_0.npy', allow_pickle=True)
 
-        if self.spectra.binary:
+        if self.binary:
             torch.save(torch.tensor(new).to(torch.int8), 'flattened_adjacency_matrix.pt')
         else:
             torch.save(torch.tensor(new).half(), 'flattened_adjacency_matrix.pt')

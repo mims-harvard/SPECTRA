@@ -30,7 +30,8 @@ def run_independent_set(spectral_parameter: int,
     if not binary:
         if num_splits is None:
             raise Exception("Num splits must be specified for non-binary graphs, see documentation for more information")
-        threshold = spectral_parameter*(torch.max(input_G) - torch.min(input_G))/num_splits 
+        #Higher spectral parameter means more nodes deleted, so lower threshold
+        threshold = (1-spectral_parameter)*(input_G.max() - input_G.min())
     else:
         threshold = 0 
     if debug_mode:
@@ -70,42 +71,42 @@ def run_independent_set(spectral_parameter: int,
             indices_to_gather.append((chosen_node, index))
 
         values = input_G.get_weights(indices_to_gather)
-
         indices_deleted.extend(list(torch.tensor(to_iterate).cuda()[values > threshold].cpu().numpy()))
 
         indices_deleted = list(set(indices_deleted))
         indices_to_scan = set(indices_to_scan)
         
-        if len(indices_deleted) > expected_number_delete:
-            indices_deleted = [chosen_node]
-            total_num_deleted += 1
-        else:
-            independent_set.append(chosen_node)
-            for i in indices_deleted:
-                if binary:
-                    if random.random() < spectral_parameter:
-                        indices_to_scan.remove(i)
-                        total_num_deleted += 1
-                        num_deleted_in_iteration += 1
-                        full_indices_deleted.append(i)
-                else:
+        # if len(indices_deleted) > expected_number_delete:
+        #     indices_deleted = [chosen_node]
+        #     total_num_deleted += 1
+        # else:
+        
+        independent_set.append(chosen_node)
+        for i in indices_deleted:
+            if binary:
+                if random.random() < spectral_parameter:
                     indices_to_scan.remove(i)
                     total_num_deleted += 1
                     num_deleted_in_iteration += 1
                     full_indices_deleted.append(i)
-                
-                if minimum is not None:
-                    if n - total_num_deleted <= minimum - len(independent_set):
-                        independent_set.extend(indices_to_scan)
-                        return independent_set
+            else:
+                indices_to_scan.remove(i)
+                total_num_deleted += 1
+                num_deleted_in_iteration += 1
+                full_indices_deleted.append(i)
+            
+            if minimum is not None:
+                if n - total_num_deleted <= minimum - len(independent_set):
+                    independent_set.extend(indices_to_scan)
+                    return independent_set
 
-            indices_deleted.append(chosen_node)
+        indices_deleted.append(chosen_node)
 
         indices_to_scan = list(indices_to_scan)
         pbar.update(num_deleted_in_iteration)
 
-        if len(indices_to_scan) != 136428 - len(full_indices_deleted):
-            raise Exception("Length of indices to scan is not equal to 136428 - len(full_indices_deleted), logic is not met")
+        if len(indices_to_scan) != n - len(full_indices_deleted):
+            raise Exception("Length of indices to scan is not equal to n (num nodes) - len(full_indices_deleted), logic is not met")
     
     pbar.close()
 

@@ -10,13 +10,13 @@ class FlattenedAdjacency:
     def __init__(self, 
                  flattened_adjacency_path: str):
         
-        self.flattened_adjacency = torch.load(flattened_adjacency_path)[:24929323695]
+        self.flattened_adjacency = torch.load(flattened_adjacency_path)
         if torch.cuda.is_available():
             self.flattened_adjacency = self.flattened_adjacency.cuda()
         self.n = self.get_number_len(len(self.flattened_adjacency))
         if self.flattened_adjacency.dtype is torch.int8:
             self.binary = True
-        elif self.flattened_adjacency.dtype is torch.bfloat8:
+        elif self.flattened_adjacency.dtype is torch.float16:
             self.binary = False
         else:
             raise ValueError("Invalid datatype. Use torch.int8 or torch.bfloat16.")
@@ -45,7 +45,10 @@ class FlattenedAdjacency:
             to_index = []
             for i, j in indices:
                 to_index.append(self.return_index_flat(i, j))
-            return self.flattened_adjacency[to_index].to(torch.int64)
+            if self.binary:
+                return self.flattened_adjacency[to_index].to(torch.int64)
+            return self.flattened_adjacency[to_index].to(torch.float32)
+
         else:
             raise IndexError("Invalid index. Use FlattenedAdjacency[i, j] or FlattenedAdjacency[[i,j],[k,l]] for indexing.")
 
@@ -148,8 +151,6 @@ class Spectral_Property_Graph:
             if deleted_nodes is None or key not in deleted_nodes:
                 deleted_nodes = yield key, self.degree_distribution[key]
                 deleted_nodes = set(deleted_nodes)
-            
-
     
     def get_weight(self, i: int, j:int):
         return self.flattened_adjacency[i, j]
@@ -159,6 +160,12 @@ class Spectral_Property_Graph:
     
     def get_stats(self):
         return self.num_nodes, self.num_edges, self.get_density(return_sum = False)
+        
+    def max(self):
+        return torch.max(self.flattened_adjacency.flattened_adjacency)
+
+    def min(self):
+        return torch.min(self.flattened_adjacency.flattened_adjacency)
 
 
         
@@ -209,9 +216,13 @@ def plot_split_stats(stats_file: str = None, name: str = None, stats: Optional[D
     ax1.set_ylabel('Dataset Size')
     ax1.legend()
 
-
     # Cross split overlap vs Spectral parameter
     ax2.scatter(spectral_parameter, css, color='red')
+    if 'std_css' in stats:
+        ax2.errorbar(spectral_parameter, css, yerr=stats['std_css'], fmt='o', color='red', ecolor='lightgray', elinewidth=2, capsize=3)
+        ax2.scatter(spectral_parameter, stats['max_css'], color='purple', label='Max CSS')
+        ax2.legend()
+
     ax2.set_title('Cross Split Overlap vs Spectral Parameter')
     ax2.set_xlabel('Spectral Parameter')
     ax2.set_ylabel('Cross Split Overlap')
