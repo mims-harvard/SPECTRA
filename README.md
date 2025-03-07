@@ -201,7 +201,7 @@ If there are any other tutorials of interest feel free to raise an issue!
 
 ## Background
 
-SPECTRA is [published](rdcu.be/d2D0z) in Nature Machine Intelligence. For more code about the method behind SPECTRA and the initials studies conducted with SPECTRA, check out the paper folder. 
+SPECTRA is [published](https://rdcu.be/d2D0z) in Nature Machine Intelligence. For more code about the method behind SPECTRA and the initials studies conducted with SPECTRA, check out the paper folder. 
 
 ## Discussion and Development
 
@@ -223,7 +223,7 @@ All development discussions take place on GitHub in this repo in the issue track
 
 2. *I have a foundation model that is pre-trained on a large amount of data. It is not feasible to do pairwise calculations of SPECTRA properties. How can I use SPECTRA?*
 
-    It is still possible to run SPECTRA on the foundation model (FM) and the evaluation dataset. You would use SPECTRA on the evaluation dataset then train and evaluate the foundation model on each SPECTRA split (either through linear probing, fine-tuning, or any other strategy) to calculate the AUSPC. Then you would determine the cross-split overlap between the pre-training dataset and the evaluation dataset. You would repeat this for multiple evaluation datasets, until you could plot FM AUSPC versus cross-split overlap to the evaluation dataset. For more details on what this would look like check out the [publication](rdcu.be/d2D0z), specifically section 5 of the results section. If there is large interest in this FAQ I can release a tutorial on this, just raise an issue! 
+    It is still possible to run SPECTRA on the foundation model (FM) and the evaluation dataset. You would use SPECTRA on the evaluation dataset then train and evaluate the foundation model on each SPECTRA split (either through linear probing, fine-tuning, or any other strategy) to calculate the AUSPC. Then you would determine the cross-split overlap between the pre-training dataset and the evaluation dataset. You would repeat this for multiple evaluation datasets, until you could plot FM AUSPC versus cross-split overlap to the evaluation dataset. For more details on what this would look like check out the [publication](https://rdcu.be/d2D0z), specifically section 5 of the results section. If there is large interest in this FAQ I can release a tutorial on this, just raise an issue! 
 
 3. *I have a foundation model that is pre-trained on a large amount of data and **I do not have access to the pre-training data**. How can I use SPECTRA?*
 
@@ -231,7 +231,7 @@ All development discussions take place on GitHub in this repo in the issue track
 
 4. *SPECTRA takes a long time to run is it worth it?*
 
-    The pairwise spectral property comparison is computationally expensive, but only needs to be done once. Generated SPECTRA splits are important resources that should be released to the public so others can utlilize them without spending resources. For more details on the runtime of the method check out the [publication](rdcu.be/d2D0z), specifically section 6 of the results section. The computation can be sped up with cpu cores, which is a feature that will be released.
+    The pairwise spectral property comparison is computationally expensive, but only needs to be done once. Generated SPECTRA splits are important resources that should be released to the public so others can utlilize them without spending resources. For more details on the runtime of the method check out the [publication](https://rdcu.be/d2D0z), specifically section 6 of the results section. The computation can be sped up with cpu cores, which is a feature that will be released.
 
 If there are any other questions please raise them in the issues and I can address them. I'll keep adding to the FAQ as common questions begin to surface.
 
