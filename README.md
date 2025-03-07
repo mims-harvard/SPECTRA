@@ -74,7 +74,7 @@ When SPECTRA runs on an SPG:
 
 ## How to use spectra
 
-### Step 1: Define the spectral property, cross-split overlap, and the spectra dataset wrapper
+### Step 1: Define the spectral property and the spectra dataset wrapper
 
 To run spectra you must first define important two abstract classes, Spectra and SpectraDataset. 
 
